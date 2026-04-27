@@ -3,15 +3,33 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>割り振りツール v15 (Cloud Sync + Auth)</title>
+<title>割り振りツール v15 Cloud</title>
 <style>
-/* --- スタイルは元のデザインを維持 --- */
+/* --- パスワード画面のスタイル --- */
+#loginOverlay {
+    position: fixed; inset: 0; background: #2c3e50;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    z-index: 2000; color: white; font-family: "Yu Gothic UI","Meiryo",sans-serif;
+}
+#loginOverlay h2 { margin-bottom: 20px; font-size: 20px; }
+#loginOverlay input {
+    padding: 12px; font-size: 16px; border-radius: 4px; border: 1px solid #ccc;
+    margin-bottom: 15px; width: 260px; text-align: center; color: #333;
+}
+#loginOverlay button {
+    padding: 10px 30px; background: #3498db; color: white; border: none;
+    border-radius: 4px; cursor: pointer; font-size: 16px; font-weight: bold;
+}
+#loginOverlay .err { color: #ff7675; font-size: 14px; margin-top: 15px; display: none; }
+
+#mainContent { display: none; }
+
+/* 既存スタイル */
 *,*::before,*::after { box-sizing: border-box; }
 html, body { margin: 0; padding: 0; }
 body {
   font-family: "Yu Gothic UI","Meiryo",system-ui,sans-serif;
   background: #eef1f5; color: #222; font-size: 14px; line-height: 1.4;
-  display: none; /* パスワード認証まで非表示 */
 }
 header {
   background: #2c3e50; color: white; padding: 8px 12px;
@@ -20,254 +38,256 @@ header {
 }
 header h1 { margin: 0; font-size: 16px; }
 header h1 .ver { font-size: 10px; opacity: 0.6; }
-.date-tabs {
-  display: flex; gap: 3px; flex-wrap: wrap; flex: 1 1 auto; min-width: 0;
-}
+.date-tabs { display: flex; gap: 3px; flex-wrap: wrap; flex: 1 1 auto; min-width: 0; }
 .date-tab {
   padding: 5px 9px; background: rgba(255,255,255,0.1); color: white;
   border: 1px solid rgba(255,255,255,0.2); border-radius: 4px;
-  font-size: 12px; cursor: pointer; font-family: inherit;
-  white-space: nowrap;
+  font-size: 12px; cursor: pointer; font-family: inherit; white-space: nowrap;
 }
 .date-tab.active { background: #3498db; border-color: #3498db; font-weight: 700; }
 .date-tab .sat { color: #74b9ff; }
 .date-tab .sun { color: #ff7675; }
-.date-tab.active .sat, .date-tab.active .sun { color: white; }
-
 header .actions { display: flex; gap: 5px; flex-wrap: wrap; }
 header button {
   padding: 5px 10px; border: none; border-radius: 4px; cursor: pointer;
   font-size: 12px; font-family: inherit; background: #27ae60; color: white;
 }
+header button:disabled { background: #95a5a6; cursor: not-allowed; }
 header button.sec { background: #7f8c8d; }
 header button.dng { background: #e74c3c; }
-header button:disabled { background: #ccc; cursor: not-allowed; }
 
-.diag {
-  background: #fffbcc; padding: 8px 12px; font-size: 12px;
-  border-bottom: 1px solid #e6d97a;
-}
+.diag { background: #fffbcc; padding: 8px 12px; font-size: 12px; border-bottom: 1px solid #e6d97a; }
 .diag b { color: #333; }
+.diag .ok { color: #27ae60; font-weight: 700; }
 
 main { padding: 10px; }
-.sites-grid {
-  display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-  gap: 8px;
-}
+.sites-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 8px; }
 .site {
   background: white; border-radius: 6px; padding: 8px 10px;
   box-shadow: 0 1px 2px rgba(0,0,0,0.08); border: 1px solid #dde1e7;
   display: flex; flex-direction: column; min-height: 120px;
 }
-.site.night {
-  background: linear-gradient(180deg, #2c3e50 0%, #34495e 100%);
-  border-color: #1a252f;
-  color: #ecf0f1;
-}
-.site-head {
-  display: flex; justify-content: space-between; align-items: baseline;
-  gap: 6px; margin-bottom: 6px;
-}
+.site.kyuuji { border-color: #e74c3c; background: #fff5f5; }
+.site.night { background: linear-gradient(180deg, #2c3e50 0%, #34495e 100%); border-color: #1a252f; color: #ecf0f1; }
+.shift-tag { display: inline-block; font-size: 9px; padding: 1px 6px; border-radius: 6px; font-weight: 700; margin-left: 4px; vertical-align: middle;}
+.shift-tag.day { background: #fef5e1; color: #e67e22; }
+.shift-tag.night { background: #f39c12; color: #2c3e50; }
+.site-head { display: flex; justify-content: space-between; align-items: baseline; gap: 6px; margin-bottom: 6px; }
 .site-name { font-weight: 700; font-size: 14px; color: #2c3e50; }
 .site.night .site-name { color: #ecf0f1; }
-.site-count {
-  font-size: 11px; background: #ecf0f1; padding: 2px 8px;
-  border-radius: 10px; color: #555;
-}
-.site-body {
-  display: flex; flex-wrap: wrap; gap: 4px; flex: 1; align-content: flex-start;
-}
-.chip {
-  display: inline-flex; align-items: center; gap: 3px;
-  background: #3498db; color: white; padding: 3px 4px 3px 9px;
-  border-radius: 12px; font-size: 12px;
-}
+.site-count { font-size: 11px; background: #ecf0f1; padding: 2px 8px; border-radius: 10px; color: #555; }
+.site-body { display: flex; flex-wrap: wrap; gap: 4px; flex: 1; align-content: flex-start; }
+.chip { display: inline-flex; align-items: center; gap: 3px; background: #3498db; color: white; padding: 3px 4px 3px 9px; border-radius: 12px; font-size: 12px; }
 .chip.sub { background: #8e44ad; }
-.chip .rm { cursor: pointer; padding: 0 6px; font-weight: 700; }
-.add-btn {
-  padding: 2px 10px; border: 1px dashed #95a5a6; background: white;
-  border-radius: 12px; font-size: 12px; cursor: pointer; color: #7f8c8d;
-}
+.chip .rm { cursor: pointer; padding: 0 6px; font-weight: 700; opacity: 0.75; }
+.add-btn { padding: 2px 10px; border: 1px dashed #95a5a6; background: white; border-radius: 12px; font-size: 12px; cursor: pointer; color: #7f8c8d; }
 
-/* モーダル */
-.modal-bg {
-  position: fixed; inset: 0; background: rgba(0,0,0,0.5);
-  display: none; align-items: center; justify-content: center;
-  z-index: 200; padding: 10px;
-}
+.modal-bg { position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: none; align-items: center; justify-content: center; z-index: 200; padding: 10px; }
 .modal-bg.open { display: flex; }
-.modal {
-  background: white; border-radius: 8px; padding: 14px;
-  max-width: 520px; width: 100%; max-height: 80vh;
-  display: flex; flex-direction: column;
-}
-.modal .people {
-  overflow-y: auto; flex: 1; display: flex; flex-wrap: wrap; gap: 4px;
-  border: 1px solid #eee; padding: 8px; border-radius: 4px;
-}
-.modal .people .pchip {
-  background: #16a085; color: white; padding: 5px 10px;
-  border-radius: 14px; font-size: 13px; cursor: pointer; border:none;
-}
-.modal .people .pchip.sub { background: #8e44ad; }
-
-.toast {
-  position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
-  background: #2c3e50; color: white; padding: 8px 16px; border-radius: 4px;
-  font-size: 13px; z-index: 300;
-}
+.modal { background: white; border-radius: 8px; padding: 14px; max-width: 520px; width: 100%; max-height: 80vh; display: flex; flex-direction: column; }
+.modal .people { overflow-y: auto; flex: 1; display: flex; flex-wrap: wrap; gap: 4px; padding: 8px; background: #fafbfc; border: 1px solid #eee; border-radius: 4px; }
+.modal .people .pchip { background: #16a085; color: white; padding: 5px 10px; border-radius: 14px; border: none; cursor: pointer; font-size: 13px; }
+.modal .people .pchip.assigned { background: #ecf0f1; color: #7f8c8d; text-decoration: line-through; }
+.modal .search { width: 100%; padding: 8px; margin-bottom: 10px; border: 1px solid #ccc; border-radius: 4px; }
+.toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: #27ae60; color: white; padding: 8px 16px; border-radius: 4px; z-index: 300; }
+.loading-overlay { position: fixed; inset: 0; background: rgba(255,255,255,0.8); display: none; align-items: center; justify-content: center; z-index: 1000; }
 </style>
 </head>
 <body>
-<header>
-  <h1>割り振りツール <span class="ver">v15 Cloud</span></h1>
-  <div class="date-tabs" id="tabs"></div>
-  <div class="actions">
-    <button id="btnSave" onclick="saveToServer()">💾 保存</button>
-    <button onclick="exportCSV()" class="sec">📋 CSV</button>
-    <button onclick="resetAll()" class="dng">↺ 初期化</button>
-  </div>
-</header>
-<div class="diag" id="diag">データを読み込んでいます...</div>
-<main>
-  <div class="sites-grid" id="grid"></div>
-</main>
+
+<div id="loginOverlay">
+    <h2>割り振りツール hamagumi</h2>
+    <input type="password" id="passInput" placeholder="パスワードを入力">
+    <button onclick="checkPass()">ログイン</button>
+    <div id="loginErr" class="err">パスワードが正しくありません</div>
+</div>
+
+<div id="mainContent">
+    <div id="loading" class="loading-overlay">☁️ クラウド同期中...</div>
+    <header>
+      <h1>割り振りツール <span class="ver">v15 Cloud</span></h1>
+      <div class="date-tabs" id="tabs"></div>
+      <div class="actions">
+        <button id="saveBtn" onclick="save()">💾 クラウド保存</button>
+        <button onclick="exportCSV()" class="sec">📋 CSV</button>
+        <button onclick="resetAll()" class="dng">↺ 初期化</button>
+      </div>
+    </header>
+    <div class="diag" id="diag">データ取得中...</div>
+    <main>
+      <div class="sites-grid" id="grid"></div>
+    </main>
+</div>
 
 <div class="modal-bg" id="modal" onclick="if(event.target.id==='modal')closeModal()">
-  <div class="modal">
-    <h3 id="modalTitle">メンバー選択</h3>
-    <input type="text" class="search" id="modalSearch" placeholder="名前で検索..." style="width:100%; padding:8px; margin-bottom:10px;">
-    <div class="people" id="modalPeople"></div>
-    <div class="foot" style="margin-top:10px; text-align:right;">
-      <button onclick="closeModal()" style="padding:5px 15px;">閉じる</button>
+    <div class="modal">
+      <h3 id="modalTitle">メンバー選択</h3>
+      <input type="text" class="search" id="modalSearch" placeholder="名前で検索..." oninput="renderModalList()">
+      <div class="people" id="modalPeople"></div>
+      <div class="foot" style="margin-top:10px;"><button onclick="closeModal()" style="width:100%; padding:8px;">閉じる</button></div>
     </div>
-  </div>
 </div>
 
 <script>
 'use strict';
 
-// --- 設定 ---
 const GAS_URL = "https://script.google.com/a/macros/liberta.site/s/AKfycbw8g9e7XQy6JLCzgC5ut5juDCUbaH5eVQW06XMUsGplrZbyTmJjLyfomCyvCEIiwsqFEg/exec";
-const ACCESS_PASS = "liberta2024"; // ★ここにパスワードを設定してください
+const PASSWORD = "hamagumi-test";
 
-// --- 基本データ ---
-var DATA = {"dates": [{"date": "2026-04-12", "day": "日"}, {"date": "2026-04-13", "day": "月"}, {"date": "2026-04-14", "day": "火"}, {"date": "2026-04-15", "day": "水"}, {"date": "2026-04-16", "day": "木"}, {"date": "2026-04-17", "day": "金"}, {"date": "2026-04-18", "day": "土"}, {"date": "2026-04-19", "day": "日"}, {"date": "2026-04-20", "day": "月"}, {"date": "2026-04-21", "day": "火"}, {"date": "2026-04-22", "day": "水"}, {"date": "2026-04-23", "day": "木"}, {"date": "2026-04-24", "day": "金"}, {"date": "2026-04-25", "day": "土"}], "sites": [{"name": "湯島", "customer": "小見", "shift": "day"}, {"name": "東雲", "customer": "ハツガイ", "shift": "day"}, {"name": "古河第一中学", "customer": "ホクショウ", "shift": "day"}, {"name": "赤坂", "customer": "ハツガイ", "shift": "day"}, {"name": "中瀬中", "customer": "エコワス", "shift": "day"}, {"name": "木更津追加工事", "customer": "小見", "shift": "day"}, {"name": "松濤中", "customer": "大輝", "shift": "day"}, {"name": "鶴見", "customer": "上岡", "shift": "day"}, {"name": "コカコーラ桶川", "customer": "小見", "shift": "day"}, {"name": "小吹清掃工場", "customer": "上岡", "shift": "day"}, {"name": "都立大２号館", "customer": "小見", "shift": "day"}, {"name": "清瀬", "customer": "ハツガイ", "shift": "day"}, {"name": "立川第２", "customer": "ハツガイ", "shift": "day"}, {"name": "鉄鋼ビル　野村", "customer": "小見", "shift": "night"}, {"name": "千葉大", "customer": "小見", "shift": "day"}, {"name": "水戸", "customer": "上岡", "shift": "day"}, {"name": "休み", "customer": "", "shift": "day"}, {"name": "かすみ公民館", "customer": "小見", "shift": "day"}, {"name": "境警察署", "customer": "北捷", "shift": "day"}, {"name": "埼玉物流", "customer": "赤木", "shift": "day"}], "people": ["BS", "E解", "ITG", "SK", "kグエン", "アメ", "ガニ", "キエン", "クアン", "グエン", "コウダイ", "ジャン", "ズイ", "ズオン", "ソン", "チェン", "チュオン", "ツー", "ヅアン", "ディアナ", "トト", "ドアン", "ハッジ", "バグス", "ヒエン", "フィー", "フオン", "フン", "フー", "ヘル", "ホアン", "マデュ", "ユソフ", "ラリー", "リンカン", "レノ", "ロド", "ロベタ", "ヴァン", "久保田", "伊東", "周村", "坂本", "大久保", "大庭", "大竹", "小林", "山陰", "平山", "幸V", "庭野", "木島", "松尾", "武田", "江中", "田中", "田辺", "相澤", "石井", "立石", "能重", "花井", "鈴木", "長友", "鵜野"], "assignments": {}};
-var SUB = ['リンカン','ITG','SK','AW','BP','BS','E解','E手','コウダイ','ディアナ','幸V','エンブレム','濱組','貞野'];
+// --- 元データを変数に保持 ---
+const INITIAL_ASSIGNMENTS = {"2026-04-16": {"湯島": ["松尾"], "東雲": ["大竹", "リンカン"], "古河第一中学": ["小林", "フオン", "キエン", "ロベタ", "ガニ", "レノ"], "赤坂": ["立石", "BS", "平山", "ITG", "SK"], "中瀬中": ["田中", "ヴァン", "グエン", "大庭"], "木更津追加工事": ["鵜野", "周村", "フィー", "チェン", "kグエン", "ズオン"], "松濤中": ["庭野", "ハッジ", "ズイ", "久保田", "ロド"], "鶴見": ["武田", "コウダイ", "ヅアン", "マデュ", "クアン", "フン", "E解"], "コカコーラ桶川": ["鈴木", "ユソフ", "トト", "江中", "ラリー", "BS"], "清瀬": ["花井", "ヘル", "バグス", "マデュ", "山陰", "坂本", "相澤"], "立川第２": ["大久保", "ジャン", "ドアン"], "鉄鋼ビル　野村": ["木島", "チュオン", "ヒエン", "伊東", "ホアン"], "千葉大": ["田辺", "アメ", "長友", "石井", "松尾", "能重"], "休み": ["フー", "ソン", "ツー"]}, "2026-04-17": {"湯島": ["松尾", "相澤"], "東雲": ["大竹", "リンカン"], "古河第一中学": ["小林", "フオン", "キエン", "ロベタ", "ガニ", "レノ"], "赤坂": ["立石", "BS", "平山", "ITG", "SK"], "中瀬中": ["田中", "ヴァン", "グエン", "大庭"], "木更津追加工事": ["鵜野", "周村", "フィー", "チェン", "kグエン", "ズオン"], "松濤中": ["庭野", "ハッジ", "ズイ", "久保田", "ロド"], "鶴見": ["武田", "コウダイ", "ヅアン", "マデュ", "クアン", "フン", "E解"], "コカコーラ桶川": ["鈴木", "ユソフ", "坂本", "江中", "ラリー", "BS"], "清瀬": ["花井", "ヘル", "バグス", "マデュ", "山陰", "トト", "相澤"], "立川第２": ["大久保", "ジャン", "ドアン"], "鉄鋼ビル　野村": ["木島", "チュオン", "ヒエン", "伊東", "ホアン", "立石", "小林", "長友", "武田", "庭野"], "千葉大": ["田辺", "アメ", "長友", "石井", "松尾", "能重"], "休み": ["フー", "ソン", "ツー"]}, "2026-04-13": {"東雲": ["大竹", "リンカン"], "古河第一中学": ["小林", "フオン", "キエン", "ロベタ", "ガニ", "レノ"], "赤坂": ["立石", "BS", "平山", "ITG", "SK"], "中瀬中": ["田中", "ヴァン", "グエン"], "木更津追加工事": ["鵜野", "周村", "フィー", "チェン", "kグエン", "ズオン", "ジャン"], "松濤中": ["庭野", "ハッジ", "ズイ", "久保田", "ロド"], "鶴見": ["武田", "コウダイ", "マデュ", "クアン", "フン", "E解"], "コカコーラ桶川": ["鈴木", "ユソフ", "トト", "江中", "ラリー"], "都立大２号館": ["能重"], "清瀬": ["花井", "ヘル", "バグス", "マデュ", "山陰", "坂本", "相澤", "松尾"], "鉄鋼ビル　野村": ["木島", "チュオン", "ヒエン", "伊東", "ホアン"], "千葉大": ["田辺", "アメ", "長友", "石井"], "水戸": ["大久保", "ヅアン"], "休み": ["フー", "ソン", "ツー"]}, "2026-04-14": {"東雲": ["大竹", "リンカン"], "古河第一中学": ["小林", "フオン", "キエン", "ロベタ", "ガニ", "レノ"], "赤坂": ["立石", "BS", "平山", "ITG", "SK"], "中瀬中": ["田中", "ヴァン", "グエン"], "木更津追加工事": ["鵜野", "周村", "フィー", "チェン", "kグエン", "ズオン", "ジャン"], "松濤中": ["庭野", "ハッジ", "ズイ", "久保田", "ロド"], "鶴見": ["相澤", "コウダイ", "大久保", "ヅアン", "マデュ", "クアン", "フン", "E解"], "コカコーラ桶川": ["鈴木", "ユソフ", "トト", "江中", "ラリー"], "清瀬": ["花井", "ヘル", "バグス", "マデュ", "山陰", "坂本", "松尾"], "鉄鋼ビル　野村": ["木島", "チュオン", "ヒエン", "伊東", "ホアン"], "千葉大": ["田辺", "アメ", "長友", "石井", "能重"], "休み": ["フー", "ソン", "ツー", "武田"]}, "2026-04-15": {"東雲": ["大竹", "リンカン"], "古河第一中学": ["小林", "フオン", "キエン", "ロベタ", "ガニ", "レノ"], "赤坂": ["立石", "BS", "平山", "ITG", "SK"], "中瀬中": ["田中", "ヴァン", "グエン", "大庭"], "木更津追加工事": ["鵜野", "周村", "フィー", "チェン", "kグエン", "ズオン"], "松濤中": ["庭野", "ハッジ", "ズイ", "久保田", "ロド"], "鶴見": ["相澤", "コウダイ", "ヅアン", "マデュ", "クアン", "フン", "E解"], "コカコーラ桶川": ["鈴木", "ユソフ", "トト", "江中", "ラリー", "BS"], "清瀬": ["花井", "ヘル", "バグス", "マデュ", "山陰", "坂本", "松尾"], "立川第２": ["大久保", "ジャン", "ドアン"], "鉄鋼ビル　野村": ["木島", "チュオン", "ヒエン", "伊東", "ホアン"], "千葉大": ["田辺", "アメ", "長友", "石井", "能重"], "休み": ["フー", "ソン", "ツー", "武田"]}, "2026-04-18": {"東雲": ["大竹", "鵜野", "キエン", "ロド"], "古河第一中学": ["小林", "フオン"], "中瀬中": ["田中", "ヴァン", "グエン", "立石"], "鶴見": ["武田", "ズイ", "花井", "ハッジ", "大久保", "チェン", "ズオン", "ドアン", "ITG", "コウダイ"], "コカコーラ桶川": ["鈴木", "ユソフ", "坂本", "江中", "ラリー", "BS"], "千葉大": ["田辺", "アメ", "トト", "相澤"]}, "2026-04-21": {"かすみ公民館": ["相澤", "ロド", "ユソフ", "伊東", "江中"], "東雲": ["大竹", "ジャン", "フン", "リンカン"], "古河第一中学": ["小林", "フオン", "キエン", "ロベタ", "ガニ", "レノ"], "赤坂": ["立石", "BS", "平山", "ITG", "SK"], "中瀬中": ["田中", "ヴァン", "グエン", "大庭"], "木更津追加工事": ["鵜野", "周村", "フィー", "チェン", "kグエン", "ズオン"], "松濤中": ["庭野", "ハッジ", "ズイ", "久保田"], "鶴見": ["武田", "コウダイ", "E解"], "コカコーラ桶川": ["鈴木", "坂本", "ラリー", "BS"], "境警察署": ["田辺", "石井"], "清瀬": ["花井", "ヘル", "バグス", "マデュ", "山陰", "トト"], "立川第２": ["大久保", "ドアン", "クアン"], "鉄鋼ビル　野村": ["木島", "チュオン", "ヒエン", "伊東", "ホアン"], "千葉大": ["長友", "アメ", "能重", "ディアナ"], "休み": ["松尾", "フー", "ソン", "ツー"]}, "2026-04-20": {"東雲": ["大竹", "ジャン", "フン", "リンカン"], "古河第一中学": ["小林", "フオン", "キエン", "ロベタ", "ガニ", "レノ"], "赤坂": ["立石", "BS", "平山", "ITG", "SK"], "中瀬中": ["田中", "ヴァン", "グエン", "大庭"], "木更津追加工事": ["鵜野", "周村", "フィー", "チェン", "kグエン", "ズオン"], "松濤中": ["庭野", "ハッジ", "ズイ", "久保田", "ロド"], "鶴見": ["相澤", "石井", "コウダイ", "E解"], "コカコーラ桶川": ["鈴木", "ユソフ", "坂本", "江中", "ラリー", "BS"], "清瀬": ["花井", "ヘル", "バグス", "マデュ", "山陰", "トト"], "立川第２": ["大久保", "ドアン", "クアン"], "鉄鋼ビル　野村": ["木島", "チュオン", "ヒエン", "伊東", "ホアン"], "千葉大": ["田辺", "アメ", "長友", "ディアナ"], "休み": ["松尾", "フー", "ソン", "ツー", "武田"]}, "2026-04-22": {"東雲": ["大竹", "ジャン", "フン", "リンカン"], "古河第一中学": ["小林", "フオン", "キエン", "ロベタ", "ガニ", "レノ"], "赤坂": ["立石", "BS", "平山", "ITG", "SK"], "中瀬中": ["田中", "ヴァン", "グエン", "大庭"], "木更津追加工事": ["鵜野", "周村", "フィー", "チェン", "kグエン", "ズオン"], "松濤中": ["庭野", "ハッジ", "ズイ", "久保田"], "鶴見": ["武田", "コウダイ", "E解"], "コカコーラ桶川": ["鈴木", "坂本", "ラリー", "BS"], "境警察署": ["田辺", "石井", "江中"], "清瀬": ["花井", "ヘル", "バグス", "マデュ", "山陰", "トト"], "立川第２": ["大久保", "ドアン", "クアン"], "鉄鋼ビル　野村": ["木島", "チュオン", "ヒエン", "伊東", "ホアン"], "千葉大": ["長友", "アメ", "能重", "ディアナ"], "埼玉物流": ["相澤", "ロド", "ユソフ", "伊東"], "休み": ["松尾", "フー", "ソン", "ツー"]}, "2026-04-23": {"東雲": ["大竹", "ジャン", "フン", "リンカン"], "古河第一中学": ["小林", "フオン", "キエン", "ロベタ", "ガニ", "レノ"], "赤坂": ["立石", "BS", "平山", "ITG", "SK"], "中瀬中": ["田中", "ヴァン", "グエン", "大庭"], "木更津追加工事": ["鵜野", "周村", "フィー", "チェン", "kグエン", "ズオン"], "松濤中": ["庭野", "ハッジ", "ズイ", "久保田"], "鶴見": ["武田", "コウダイ", "E解"], "コカコーラ桶川": ["鈴木", "坂本", "ラリー", "BS"], "境警察署": ["田辺", "石井", "江中"], "清瀬": ["花井", "ヘル", "バグス", "マデュ", "山陰", "トト"], "立川第２": ["大久保", "ドアン", "クアン"], "鉄鋼ビル　野村": ["木島", "チュオン", "ヒエン", "伊東", "ホアン"], "千葉大": ["長友", "アメ", "能重", "ディアナ"], "埼玉物流": ["相澤", "ロド", "ユソフ", "伊東"], "休み": ["松尾", "フー", "ソン", "ツー"]}, "2026-04-24": {"東雲": ["大竹", "ジャン", "フン", "リンカン"], "古河第一中学": ["小林", "フオン", "キエン", "ロベタ", "ガニ", "レノ"], "赤坂": ["立石", "BS", "平山", "ITG", "SK"], "中瀬中": ["田中", "ヴァン", "グエン", "大庭"], "木更津追加工事": ["鵜野", "周村", "フィー", "チェン", "kグエン", "ズオン"], "松濤中": ["庭野", "ハッジ", "ズイ", "久保田"], "鶴見": ["武田", "コウダイ", "E解"], "コカコーラ桶川": ["鈴木", "坂本", "ラリー", "BS"], "境警察署": ["田辺", "石井", "江中"], "清瀬": ["花井", "ヘル", "バグス", "マデュ", "山陰", "トト"], "立川第２": ["大久保", "ドアン", "クアン"], "鉄鋼ビル　野村": ["木島", "チュオン", "ヒエン", "伊東", "ホアン"], "千葉大": ["長友", "アメ", "能重", "ディアナ"], "埼玉物流": ["相澤", "ロド", "ユソフ", "伊東"], "休み": ["松尾", "フー", "ソン", "ツー"]}, "2026-04-25": {"小吹清掃工場": ["大竹", "江中", "アメ", "幸V", "ロド"]}};
 
-var state = { date: null, assign: {}, currentSite: null, customSites: [], customDates: [] };
+var DATA = {"dates": [{"date": "2026-04-12", "day": "日"}, {"date": "2026-04-13", "day": "月"}, {"date": "2026-04-14", "day": "火"}, {"date": "2026-04-15", "day": "水"}, {"date": "2026-04-16", "day": "木"}, {"date": "2026-04-17", "day": "金"}, {"date": "2026-04-18", "day": "土"}, {"date": "2026-04-19", "day": "日"}, {"date": "2026-04-20", "day": "月"}, {"date": "2026-04-21", "day": "火"}, {"date": "2026-04-22", "day": "水"}, {"date": "2026-04-23", "day": "木"}, {"date": "2026-04-24", "day": "金"}, {"date": "2026-04-25", "day": "土"}], "sites": [{"name": "湯島", "customer": "小見", "shift": "day"}, {"name": "東雲", "customer": "ハツガイ", "shift": "day"}, {"name": "古河第一中学", "customer": "ホクショウ", "shift": "day"}, {"name": "赤坂", "customer": "ハツガイ", "shift": "day"}, {"name": "中瀬中", "customer": "エコワス", "shift": "day"}, {"name": "木更津追加工事", "customer": "小見", "shift": "day"}, {"name": "松濤中", "customer": "大輝", "shift": "day"}, {"name": "鶴見", "customer": "上岡", "shift": "day"}, {"name": "コカコーラ桶川", "customer": "小見", "shift": "day"}, {"name": "小吹清掃工場", "customer": "上岡", "shift": "day"}, {"name": "都立大２号館", "customer": "小見", "shift": "day"}, {"name": "清瀬", "customer": "ハツガイ", "shift": "day"}, {"name": "立川第２", "customer": "ハツガイ", "shift": "day"}, {"name": "鉄鋼ビル　野村", "customer": "小見", "shift": "night"}, {"name": "千葉大", "customer": "小見", "shift": "day"}, {"name": "水戸", "customer": "上岡", "shift": "day"}, {"name": "休み", "customer": "", "shift": "day"}, {"name": "かすみ公民館", "customer": "小見", "shift": "day"}, {"name": "境警察署", "customer": "北捷", "shift": "day"}, {"name": "埼玉物流", "customer": "赤木", "shift": "day"}], "people": ["BS", "E解", "ITG", "SK", "kグエン", "アメ", "ガニ", "キエン", "クアン", "グエン", "コウダイ", "ジャン", "ズイ", "ズオン", "ソン", "チェン", "チュオン", "ツー", "ヅアン", "ディアナ", "トト", "ドアン", "ハッジ", "バグス", "ヒエン", "フィー", "フオン", "フン", "フー", "ヘル", "ホアン", "マデュ", "ユソフ", "ラリー", "リンカン", "レノ", "ロド", "ロベタ", "ヴァン", "久保田", "伊東", "周村", "坂本", "大久保", "大庭", "大竹", "小林", "山陰", "平山", "幸V", "庭野", "木島", "松尾", "武田", "江中", "田中", "田辺", "相澤", "石井", "立石", "能重", "花井", "鈴木", "長友", "鵜野"], "assignments": INITIAL_ASSIGNMENTS};
+
+var SUB = ['リンカン','ITG','SK','BS','E解','コウダイ','ディアナ','幸V'];
+var state = { date: null, assign: JSON.parse(JSON.stringify(INITIAL_ASSIGNMENTS)), currentSite: null, customSites: [], customDates: [], hiddenDates: [], showAllDates: false };
 
 function $(id) { return document.getElementById(id); }
 
-// --- 簡易パスワード認証 ---
-window.onload = function() {
-  const input = prompt("パスワードを入力してください");
-  if (input === ACCESS_PASS) {
-    document.body.style.display = "block";
-    loadFromServer();
-  } else {
-    alert("パスワードが正しくありません。");
-    document.body.innerHTML = "<div style='padding:50px; text-align:center;'><h1>Access Denied</h1><p>正しいパスワードが必要です。</p></div>";
-    document.body.style.display = "block";
-  }
-};
+// --- パスワード処理 ---
+function checkPass() {
+    const input = $('passInput').value;
+    if (input === PASSWORD) {
+        $('loginOverlay').style.display = 'none';
+        $('mainContent').style.display = 'block';
+        init();
+    } else {
+        $('loginErr').style.display = 'block';
+    }
+}
+document.getElementById('passInput').addEventListener('keypress', (e) => { if (e.key === 'Enter') checkPass(); });
 
-async function loadFromServer() {
-  $('diag').textContent = "クラウドから同期中...";
+// --- ツールロジック ---
+async function init() {
+  $('loading').style.display = 'flex';
   try {
     const res = await fetch(GAS_URL);
     const cloud = await res.json();
-    if (cloud && cloud.assign) {
-      state.assign = cloud.assign;
-      state.customSites = cloud.customSites || [];
-      state.customDates = cloud.customDates || [];
+    // クラウドにデータがある場合は上書き
+    if (cloud && cloud.assign && Object.keys(cloud.assign).length > 0) {
+        state.assign = cloud.assign;
+        state.customSites = cloud.customSites || [];
+        state.customDates = cloud.customDates || [];
+        state.hiddenDates = cloud.hiddenDates || [];
     }
-  } catch (e) { toast("同期失敗。ローカルを使用"); }
-  
-  var all = allDates();
-  state.date = all[0].date;
+  } catch (e) { toast("クラウド同期失敗：元データで開始します"); }
+
+  var dates = allDates();
+  var today = new Date().toISOString().slice(0,10);
+  state.date = dates.some(d => d.date === today) ? today : (dates[0] ? dates[0].date : '');
+
+  $('loading').style.display = 'none';
   renderTabs(); render();
 }
 
-async function saveToServer() {
-  const btn = $('btnSave');
-  btn.disabled = true; btn.textContent = "保存中...";
-  const payload = { assign: state.assign, customSites: state.customSites, customDates: state.customDates };
+async function save() {
+  const btn = $('saveBtn');
+  btn.disabled = true; btn.textContent = "⌛ 保存中...";
   try {
-    const res = await fetch(GAS_URL, { method: "POST", body: JSON.stringify(payload) });
-    if((await res.json()).status === "success") toast("保存完了");
-  } catch (e) { toast("保存失敗"); }
-  finally { btn.disabled = false; btn.textContent = "💾 保存"; }
+    await fetch(GAS_URL, { method: "POST", body: JSON.stringify(state) });
+    toast('クラウド保存完了');
+  } catch (e) { toast('保存失敗'); }
+  finally { btn.disabled = false; btn.textContent = "💾 クラウド保存"; }
 }
 
-// --- 基本機能 ---
-function allPeople() { return DATA.people.sort(); }
 function allDates() {
   var map = {};
-  DATA.dates.forEach(d => map[d.date] = d);
-  state.customDates.forEach(ds => map[ds] = {date:ds, day:"?"});
-  return Object.values(map).sort((a,b) => a.date > b.date ? 1 : -1);
+  DATA.dates.forEach(d => map[d.date] = { ...d, custom: false });
+  state.customDates.forEach(ds => { 
+      if(!map[ds]) map[ds] = { date: ds, day: ['日','月','火','水','木','金','土'][new Date(ds+'T00:00:00').getDay()], custom: true }; 
+  });
+  return Object.values(map).sort((a,b) => a.date.localeCompare(b.date));
 }
+
 function renderTabs() {
   var c = $('tabs'); c.innerHTML = '';
-  allDates().forEach(d => {
+  var dates = state.showAllDates ? allDates() : allDates().filter(d => !state.hiddenDates.includes(d.date));
+  dates.forEach(d => {
     var b = document.createElement('button');
     b.className = 'date-tab' + (d.date === state.date ? ' active' : '');
-    b.textContent = d.date.slice(5) + '(' + d.day + ')';
+    b.innerHTML = `${d.date.slice(5)} (${d.day})`;
     b.onclick = () => { state.date = d.date; renderTabs(); render(); };
     c.appendChild(b);
   });
 }
+
 function render() {
   var g = $('grid'); g.innerHTML = '';
   var dayMap = state.assign[state.date] || {};
   DATA.sites.concat(state.customSites).forEach(site => {
     var s = document.createElement('div');
-    s.className = 'site' + (site.shift === 'night' ? ' night' : '');
-    var mems = dayMap[site.name] || [];
-    s.innerHTML = `<div class="site-head"><div class="site-name">${site.name}</div><div class="site-count">${mems.length}名</div></div>`;
-    var body = document.createElement('div');
-    body.className = 'site-body';
-    mems.forEach((p, i) => {
-      var chip = document.createElement('span');
-      chip.className = 'chip' + (SUB.includes(p) ? ' sub' : '');
-      chip.innerHTML = `<span>${p}</span><span class="rm" onclick="removePerson('${site.name}',${i})">×</span>`;
-      body.appendChild(chip);
+    s.className = `site ${site.shift === 'night' ? 'night' : ''}`;
+    var members = dayMap[site.name] || [];
+    s.innerHTML = `<div class="site-head"><div class="site-name">${site.name}</div><div class="site-count">${members.length}名</div></div>`;
+    var b = document.createElement('div'); b.className = 'site-body';
+    members.forEach(p => {
+        const chip = document.createElement('span'); chip.className = 'chip' + (SUB.includes(p) ? ' sub' : '');
+        chip.innerHTML = `${p} <span class="rm" onclick="removePerson('${p}','${site.name}')">×</span>`;
+        b.appendChild(chip);
     });
-    var add = document.createElement('button');
-    add.className = 'add-btn'; add.textContent = '＋ 追加';
+    const add = document.createElement('button'); add.className = 'add-btn'; add.textContent = "＋ 追加";
     add.onclick = () => openModal(site.name);
-    body.appendChild(add);
-    s.appendChild(body); g.appendChild(s);
+    b.appendChild(add); s.appendChild(b); g.appendChild(s);
   });
+  renderDiag();
 }
-function openModal(site) {
-  state.currentSite = site;
-  $('modalTitle').textContent = site + ' に追加';
-  renderModalList();
-  $('modal').classList.add('open');
+
+function renderDiag() {
+  var count = 0;
+  if(state.assign[state.date]) Object.values(state.assign[state.date]).forEach(m => count += m.length);
+  $('diag').innerHTML = `📅 <b>${state.date}</b> · 配置中: <b class="ok">${count}</b>名`;
 }
+
+function openModal(site) { state.currentSite = site; $('modal').classList.add('open'); renderModalList(); }
 function closeModal() { $('modal').classList.remove('open'); }
+
 function renderModalList() {
   var c = $('modalPeople'); c.innerHTML = '';
   var sv = $('modalSearch').value;
-  allPeople().filter(p => !sv || p.includes(sv)).forEach(p => {
-    var b = document.createElement('button');
-    b.className = 'pchip' + (SUB.includes(p) ? ' sub' : '');
+  DATA.people.filter(p => p.includes(sv)).forEach(p => {
+    var b = document.createElement('button'); b.className = 'pchip';
     b.textContent = p;
     b.onclick = () => {
-      var day = state.assign[state.date] = state.assign[state.date] || {};
-      var list = day[state.currentSite] = day[state.currentSite] || [];
-      if(!SUB.includes(p)) Object.keys(day).forEach(s => day[s] = day[s].filter(x => x !== p));
-      list.push(p); render(); renderModalList();
+        var day = state.assign[state.date] = state.assign[state.date] || {};
+        (day[state.currentSite] = day[state.currentSite] || []).push(p);
+        render(); renderModalList();
     };
     c.appendChild(b);
   });
 }
-function removePerson(site, i) { state.assign[state.date][site].splice(i,1); render(); }
-function toast(msg) {
-  var t = document.createElement('div'); t.className = 'toast'; t.textContent = msg;
+
+function removePerson(p, site) {
+    var list = state.assign[state.date][site];
+    var idx = list.indexOf(p);
+    if (idx > -1) list.splice(idx, 1);
+    render();
+}
+
+function toast(m) {
+  var t = document.createElement('div'); t.className = 'toast'; t.textContent = m;
   document.body.appendChild(t); setTimeout(() => t.remove(), 2000);
+}
+
+function exportCSV() {
+    let csv = "日付,現場,氏名\n";
+    Object.keys(state.assign).forEach(d => {
+        Object.keys(state.assign[d]).forEach(s => {
+            csv += `${d},${s},${state.assign[d][s].join(" ")}\n`;
+        });
+    });
+    const blob = new Blob(["\uFEFF"+csv], {type:"text/csv"});
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob); a.download = "割り振りデータ.csv"; a.click();
+}
+
+function resetAll() { 
+    if(confirm("スプレッドシートのデータを削除し、元データに戻しますか？")) { 
+        state.assign = JSON.parse(JSON.stringify(INITIAL_ASSIGNMENTS)); 
+        state.customSites = [];
+        state.customDates = [];
+        save(); // 初期状態をクラウドに保存して上書き
+        render(); 
+    } 
 }
 </script>
 </body>
